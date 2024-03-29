@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.navigation.compose.rememberNavController
+import com.videorecodercompose.screens.NavGraph
 import com.videorecodercompose.ui.theme.VideoRecoderComposeTheme
 
 class MainActivity : ComponentActivity() {

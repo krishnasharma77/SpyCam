@@ -1,4 +1,4 @@
-package com.videorecodercompose
+package com.videorecodercompose.screens
 
 import android.Manifest
 import android.content.ContentValues
@@ -40,10 +40,11 @@ import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionsRequired
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.videorecodercompose.R
+import com.videorecodercompose.utils.createVideoCaptureUseCase
+import com.videorecodercompose.utils.startRecordingVideo
 import kotlinx.coroutines.launch
 import java.io.File
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 @RequiresApi(Build.VERSION_CODES.P)
 @OptIn(ExperimentalPermissionsApi::class)

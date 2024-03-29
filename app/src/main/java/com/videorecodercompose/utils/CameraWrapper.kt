@@ -1,4 +1,4 @@
-package com.videorecodercompose
+package com.videorecodercompose.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
