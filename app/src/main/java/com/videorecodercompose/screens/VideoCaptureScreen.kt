@@ -1,13 +1,18 @@
 package com.videorecodercompose.screens
 
 import android.Manifest
+import android.app.Activity
+import android.app.PictureInPictureParams
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.util.Rational
+import android.util.Size
 import androidx.annotation.RequiresApi
 import androidx.camera.core.CameraSelector
 import androidx.camera.video.Recorder
@@ -28,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,17 +55,12 @@ import java.io.File
 @RequiresApi(Build.VERSION_CODES.P)
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun VideoCaptureScreen(navController: NavController) {
+fun VideoCaptureScreen(
+    navController: NavController
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var recording: Recording? = remember { null }
-    val previewView: PreviewView = remember { PreviewView(context) }
-    val videoCapture: MutableState<VideoCapture<Recorder>?> = remember { mutableStateOf(null) }
-    val recordingStarted: MutableState<Boolean> = remember { mutableStateOf(false) }
-    val audioEnabled: MutableState<Boolean> = remember { mutableStateOf(false) }
-    val cameraSelector: MutableState<CameraSelector> = remember {
-        mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA)
-    }
+    val coroutineScope = rememberCoroutineScope()
 
     val permissionState = rememberMultiplePermissionsState(
         permissions = listOf(
@@ -67,6 +68,16 @@ fun VideoCaptureScreen(navController: NavController) {
             Manifest.permission.RECORD_AUDIO
         )
     )
+
+    var recording: Recording? = remember { null }
+    val previewView: PreviewView = remember { PreviewView(context) }
+    val videoCapture: MutableState<VideoCapture<Recorder>?> = remember { mutableStateOf(null) }
+    val recordingStarted: MutableState<Boolean> = remember { mutableStateOf(false) }
+
+    val audioEnabled: MutableState<Boolean> = remember { mutableStateOf(false) }
+    val cameraSelector: MutableState<CameraSelector> = remember {
+        mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA)
+    }
 
     LaunchedEffect(Unit) {
         permissionState.launchMultiplePermissionRequest()
@@ -80,6 +91,22 @@ fun VideoCaptureScreen(navController: NavController) {
         )
     }
 
+    LaunchedEffect(recordingStarted.value) {
+        if (recordingStarted.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Log.d("VideoCaptureScreen", "Entering PiP mode")
+            val aspectRatio = Rational(1, 1) // Aspect ratio for PiP mode
+            val screenSize = Size(1920, 1080) // Screen size for PiP mode
+            val sourceRect = Rect(0, 0, screenSize.width, screenSize.height) // Create Rect object
+
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(aspectRatio)
+                .setSourceRectHint(sourceRect) // Use Rect object for sourceRectHint
+                .build()
+
+            (context as Activity).enterPictureInPictureMode(params)
+        }
+    }
+
     PermissionsRequired(
         multiplePermissionsState = permissionState,
         permissionsNotGrantedContent = { /* ... */ },
@@ -89,7 +116,8 @@ fun VideoCaptureScreen(navController: NavController) {
             modifier = Modifier.fillMaxSize()
         ) {
             AndroidView(
-                factory = { previewView }, modifier = Modifier
+                factory = { previewView },
+                modifier = Modifier
                     .height(0.dp)
                     .width(0.dp)
                     .align(Alignment.Center)
@@ -99,40 +127,31 @@ fun VideoCaptureScreen(navController: NavController) {
                     if (!recordingStarted.value) {
                         videoCapture.value?.let { videoCapture ->
                             recordingStarted.value = true
-                            val outputDirectory = File(context.filesDir, "RecordedVideos")
-                            outputDirectory.mkdirs()
-
+                            val mediaDir = context.externalCacheDirs.firstOrNull()?.let {
+                                File(it, context.getString(R.string.app_name)).apply { mkdirs() }
+                            }
                             recording = startRecordingVideo(
                                 context = context,
                                 filenameFormat = "yyyy-MM-dd-HH-mm-ss-SSS",
                                 videoCapture = videoCapture,
-                                outputDirectory = outputDirectory,
+                                outputDirectory = if (mediaDir != null && mediaDir.exists()) mediaDir else context.filesDir,
                                 executor = context.mainExecutor,
                                 audioEnabled = audioEnabled.value
                             ) { event ->
                                 if (event is VideoRecordEvent.Finalize) {
                                     val uri = event.outputResults.outputUri
                                     if (uri != Uri.EMPTY) {
-                                        saveVideoToGallery(context, uri) // Save video to device
-
-                                       /* val uriEncoded = URLEncoder.encode(
-                                            uri.toString(),
-                                            StandardCharsets.UTF_8.toString()
-                                        )*/
-//                                        Log.d("URI", uri.encodedPath.toString())
-//                                        Log.d("URI", uriEncoded)
-                                        //navController.navigate("${Route.VIDEO_PREVIEW}/$uriEncoded")
+                                        saveVideoToGallery(context, uri)
                                     }
                                 }
                             }
-
-
                         }
                     } else {
                         recordingStarted.value = false
                         recording?.stop()
                     }
-                }, modifier = Modifier
+                },
+                modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 32.dp)
             ) {
