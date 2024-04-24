@@ -1,4 +1,4 @@
-package com.videorecodercompose
+//package com.videorecodercompose.screens
 
 import android.Manifest
 import android.content.ContentValues
@@ -40,10 +40,11 @@ import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionsRequired
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.videorecodercompose.R
+import com.videorecodercompose.util.createVideoCaptureUseCase
+import com.videorecodercompose.util.startRecordingVideo
 import kotlinx.coroutines.launch
 import java.io.File
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 @RequiresApi(Build.VERSION_CODES.P)
 @OptIn(ExperimentalPermissionsApi::class)
@@ -59,7 +60,7 @@ fun VideoCaptureScreen(navController: NavController) {
     val cameraSelector: MutableState<CameraSelector> = remember {
         mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA)
     }
-
+//Allow Premission
     val permissionState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.CAMERA,
@@ -71,6 +72,8 @@ fun VideoCaptureScreen(navController: NavController) {
         permissionState.launchMultiplePermissionRequest()
     }
 
+
+//Preview Setup
     LaunchedEffect(previewView) {
         videoCapture.value = context.createVideoCaptureUseCase(
             lifecycleOwner = lifecycleOwner,
@@ -93,6 +96,8 @@ fun VideoCaptureScreen(navController: NavController) {
                     .width(0.dp)
                     .align(Alignment.Center)
             )
+
+//            Recording Button
             IconButton(
                 onClick = {
                     if (!recordingStarted.value) {
@@ -187,6 +192,7 @@ fun VideoCaptureScreen(navController: NavController) {
     }
 }
 
+//Save recording
 fun saveVideoToGallery(context: Context, videoUri: Uri) {
     val resolver = context.contentResolver
     val contentValues = ContentValues().apply {
